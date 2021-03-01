@@ -16,6 +16,7 @@ import (
 
 func main() {
 	host := "https://myregistry.foo/v2/" // could be an env variable in real world
+	
 	// parse configs
 	props, err := parseConfiguration("config.properties")
 	if err != nil {
