@@ -15,6 +15,7 @@ import (
 )
 
 func main() {
+	host := "https://myregistry.foo/v2/" // could be an env variable in real world
 	// parse configs
 	props, err := parseConfiguration("config.properties")
 	if err != nil {
@@ -28,7 +29,7 @@ func main() {
 	client := &http.Client{Transport: tr}
 
 	// delete images
-	deleteImages(props, client)
+	deleteImages(host, props, client)
 }
 
 type configuration map[string]string
@@ -46,11 +47,11 @@ type digest struct {
 	}
 }
 
-func deleteImages(props configuration, client *http.Client) {
+func deleteImages(host string,  props configuration, client *http.Client) {
 	for image, count := range props {
 		log.Println("Deleting all " + image + " images except the last " + count + " images")
 		// get image tags
-		tags := getTags(image, client)
+		tags := getTags(host, image, client)
 
 		// convert tags to int and sort them
 		t := make([]int, len(tags))
@@ -69,27 +70,25 @@ func deleteImages(props configuration, client *http.Client) {
 		if err != nil {
 			log.Println(err.Error())
 		} else {
+			// if more or as many as current amount of tags are meant to be left into the registry, skip rest of the logic
 			if c < len(tags) {
 				save := len(tags) - c 
 				result := t[:save]
 
-				log.Println(t)
-				log.Println(result)
-
 				// delete images
 				for _, tag := range result {
-					digest := getDigest(image, tag, client)
-					log.Println(digest)
-					//deleteImage(image, digest, client)
+					digest := getDigest(host, image, tag, client)
+					deleteImage(host, image, digest, client)
 				}	
 			}
 		}
 	}
+	log.Println("Clean up finished!")
 }
 
 // Deletes an image with digest
-func deleteImage(image, digest string, client *http.Client) {
-	url := "https://myregistry.foo/v2/" + image + "/manifests/" + digest
+func deleteImage(host, image, digest string, client *http.Client) {
+	url := host + image + "/manifests/" + digest
 	req, err := http.NewRequest("DELETE", url, nil)
 	if err != nil {
 		log.Println(err.Error())
@@ -102,14 +101,14 @@ func deleteImage(image, digest string, client *http.Client) {
 	if(r.StatusCode >= 200 && r.StatusCode < 300) {
 		log.Println("Digest " + digest + " deleted!")
 	} else {
-		log.Println("Deleting digest: " + digest + " failed!")
+		log.Println("Manifest " + digest + " is waiting for garbage collection or it cannot be deleted")
 	}
 }
 
 // Gets the digest for tag
-func getDigest(image string, tag int, client *http.Client) string {
+func getDigest(host, image string, tag int, client *http.Client) string {
 	ts := strconv.Itoa(tag)
-	url := "https://myregistry.foo/v2/" + image + "/manifests/" + ts
+	url := host + image + "/manifests/" + ts
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		log.Println(err.Error())
@@ -142,9 +141,9 @@ func getDigest(image string, tag int, client *http.Client) string {
 }
 
 // Returns a list of tags from registry API
-func getTags(image string, client *http.Client) []string {
+func getTags(host, image string, client *http.Client) []string {
 	// get tags from registry API
-	r, err := client.Get("https://myregistry.foo/v2/" + image + "/tags/list") // maybe an env variable for host?
+	r, err := client.Get(host + image + "/tags/list") // maybe an env variable for host?
 	if err != nil {
 			log.Fatal(err.Error())
 	}
@@ -169,7 +168,7 @@ func getTags(image string, client *http.Client) []string {
 	return tags.Tags
 }
 
-// Parse config file to map
+// Parse config file to a map
 func parseConfiguration(filename string) (configuration, error) {
 	log.Println("Parsing configuration")
 	config := configuration{}
