@@ -12,22 +12,32 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func main() {
-	host := "https://myregistry.foo/v2/" // could be an env variable in real world
-	
-	// parse configs
-	props, err := parseConfiguration("config.properties")
+	host := os.Getenv("REGISTRY_HOST") // use https://myregistry.foo/v2/ with https://github.com/villevaltonen/registry-k8s
+	insecure, err := strconv.ParseBool(os.Getenv("INSECURE_REGISTRY"))
+
+	// HTTP-client basic config
+	var client = &http.Client{
+		Timeout: 10 * time.Second,
+	}
+
+	// configure insecure client, if needed
+	if err == nil && insecure {
+		log.Println("Using insecure HTTP-client")
+		tr := &http.Transport{
+        	TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+    	}
+		client = &http.Client{Transport: tr}
+	}
+
+	// parse retention rules
+	props, err := parseRules("config.properties")
 	if err != nil {
 		fmt.Println(err.Error())
 	}
-
-	// since minikube ca is not trusted, an insecure client is created for this PoC
-	tr := &http.Transport{
-        TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-    }
-	client := &http.Client{Transport: tr}
 
 	// delete images
 	deleteImages(host, props, client)
@@ -170,7 +180,7 @@ func getTags(host, image string, client *http.Client) []string {
 }
 
 // Parse config file to a map
-func parseConfiguration(filename string) (configuration, error) {
+func parseRules(filename string) (configuration, error) {
 	log.Println("Parsing configuration")
 	config := configuration{}
 
