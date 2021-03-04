@@ -7,4 +7,4 @@ This application is meant for removing manifests to be able to delete images fro
 2. Run the application like you would run a regular Go-application.
 
 ### Other
-- Application was built with Go purely for fun and because I didn't want to script this task. It was written really quickly, so it's not the cleanest code I've written and should be improved, when I have time.e
+- Application was built with Go purely for fun and because I didn't want to script this task. It was written really quickly, so it's not the most clean code I've written and should be improved, when I have time.e
