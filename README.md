@@ -8,3 +8,6 @@ This application is meant for removing manifests to be able to delete images fro
 
 ### Other
 - Application was built with Go purely for fun and because I didn't want to script this task. It was written really quickly, so it's not the most clean code I've written and should be improved, when I have time.
+
+### TODO
+- Modify the cleaner to be able to handle other than integers (e.g. build numbers) as tags
